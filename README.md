@@ -21,7 +21,8 @@ clojure application.
 To add more modules to your jlink environment, add them to
 `:jlink-modules` vector, like `["java.base" "java.sql"]`.
 
-To add more module path, use `:jlink-module-path ["lib/"]`.
+To add more module path, use:
+`:jlink-module-path [(str (System/getenv "JAVA_HOME") "/jmods") "lib/"]`.
 
 ## License
 
