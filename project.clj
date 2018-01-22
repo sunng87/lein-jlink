@@ -1,4 +1,4 @@
-(defproject lein-jlink "0.1.0-SNAPSHOT"
+(defproject lein-jlink "0.1.0"
   :description "a jlink plugin for leiningen"
   :url "https://github.com/sunng87/lein-jlink"
   :license {:name "Eclipse Public License"
