@@ -4,7 +4,7 @@ A Leiningen plugin for custom Java environment.
 
 ## Usage
 
-Put `[lein-jlink "0.1.0-SNAPSHOT"]` into the `:plugins` vector of your project.clj.
+Put `[lein-jlink "0.1.0]` into the `:plugins` vector of your project.clj.
 
 Create a default Java environment:
 
