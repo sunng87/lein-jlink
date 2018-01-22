@@ -2,9 +2,11 @@
 
 A Leiningen plugin for custom Java environment.
 
+[![Clojars Project](https://img.shields.io/clojars/v/lein-jlink.svg)](https://clojars.org/lein-jlink)
+
 ## Usage
 
-Put `[lein-jlink "0.1.0]` into the `:plugins` vector of your project.clj.
+Put `[lein-jlink "current-version"]` into the `:plugins` vector of your project.clj.
 
 Create a default Java environment:
 
