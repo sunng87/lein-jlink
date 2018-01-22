@@ -1,6 +1,6 @@
 # lein-jlink
 
-A Leiningen plugin for customize Java environment.
+A Leiningen plugin for custom Java environment.
 
 ## Usage
 
@@ -9,9 +9,17 @@ Put `[lein-jlink "0.1.0-SNAPSHOT"]` into the `:plugins` vector of your project.c
 Create a default Java environment:
 
 ```
-$ lein jlink
+$ lein jlink init
 ```
 
+By default, we create a basic Java environment with only base module
+(the `java.base`), which is only 29MB. That's could enough for your
+clojure application.
+
+To add more modules to your jlink environment, add them to
+`:jlink-modules` vector, like `["java.base" "java.sql"]`.
+
+To add more module path, use `:jlink-module-path ["lib/"]`.
 
 ## License
 

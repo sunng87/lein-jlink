@@ -1,7 +1,9 @@
 (ns leiningen.jlink
   (:require [leiningen.core.eval :as eval]
             [leiningen.core.main :as l]
-            [clojure.java.io :as io]))
+            [leiningen.help :as h]
+            [clojure.java.io :as io]
+            [clojure.string :as s]))
 
 (def config-cache ".lein-jlink")
 
@@ -13,9 +15,15 @@
 
 (def out "target/jlink")
 
-(defn jlink-init [project]
-  (let [jlink-modules (clojure.string/join "," (:jlink-modules project ["java.base"]))
-        java-home (System/getenv "JAVA_HOME")
+(defn- print-help []
+  (h/help nil "jlink"))
+
+(defn init
+  "Initialize jlink environment"
+  [project]
+  (let [java-home (System/getenv "JAVA_HOME")
+        jlink-module-path (s/join ":" (:jlink-module-path project [(str java-home "/jmods")]))
+        jlink-modules (s/join "," (:jlink-modules project ["java.base"]))
         cached-modules (try
                          (read-string (slurp config-cache))
                          (catch Exception _))]
@@ -24,7 +32,7 @@
       (delete-directory (io/file out))
       (eval/sh "jlink"
                "--module-path"
-               (str java-home "/jmods")
+               jlink-module-path
                "--add-modules"
                jlink-modules
                "--output"
@@ -36,12 +44,19 @@
       (spit config-cache (pr-str jlink-modules))
       (l/info "Created ./target/jlink/bin/java"))))
 
-(defn jlink-clean [project]
+(defn clean
+  "Cleanup jlink environment"
+  [project]
   (delete-directory (io/file out)))
 
-(defn jlink
+(defn ^{:help-arglists '[[project sub-command]]
+        :subtasks (list #'init #'clean)}
+  jlink
   "Create Java environment using jlink"
-  [project sub]
-  (cond
-    (= sub "init") (jlink-init project)
-    (= sub "clean") (jlink-clean project)))
+  ([project]
+   (print-help))
+  ([project sub & args]
+   (cond
+     (= sub "init") (init project)
+     (= sub "clean") (clean project)
+     :else (print-help))))
