@@ -1,9 +1,14 @@
 (ns leiningen.jlink
+  (:refer-clojure :exclude [test])
   (:require [leiningen.core.eval :as eval]
             [leiningen.core.main :as l]
+            [leiningen.run :as run]
+            [leiningen.test :as test]
             [leiningen.help :as h]
             [clojure.java.io :as io]
             [clojure.string :as s]))
+
+(declare jlink)
 
 (def config-cache ".lein-jlink")
 
@@ -49,8 +54,24 @@
   [project]
   (delete-directory (io/file out)))
 
+(def java-exec (str out "/bin/java"))
+
+(defn run
+  "lein run using jlink java"
+  [project args]
+  (jlink project "init")
+  (let [project (assoc project :java-cmd java-exec)]
+    (apply run/run project args)))
+
+(defn test
+  "lein test using jlink java"
+  [project args]
+  (jlink project "init")
+  (let [project (assoc project :java-cmd java-exec)]
+    (apply test/test project args)))
+
 (defn ^{:help-arglists '[[project sub-command]]
-        :subtasks (list #'init #'clean)}
+        :subtasks (list #'init #'clean #'run #'test)}
   jlink
   "Create Java environment using jlink"
   ([project]
@@ -59,4 +80,6 @@
    (cond
      (= sub "init") (init project)
      (= sub "clean") (clean project)
+     (= sub "run") (run project args)
+     (= sub "test") (test project args)
      :else (print-help))))
