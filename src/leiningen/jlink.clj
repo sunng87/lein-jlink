@@ -4,6 +4,8 @@
             [leiningen.core.main :as l]
             [leiningen.run :as run]
             [leiningen.test :as test]
+            [leiningen.uberjar :as uberjar]
+            [leiningen.jar :as jar]
             [leiningen.help :as h]
             [clojure.java.io :as io]
             [clojure.string :as s]))
@@ -18,7 +20,8 @@
       (delete-directory f0)))
   (io/delete-file f true))
 
-(def out "target/jlink")
+(defn out [project]
+  (str (:target-path project) "/jlink"))
 
 (defn- print-help []
   (h/help nil "jlink"))
@@ -31,44 +34,60 @@
         jlink-modules (s/join "," (:jlink-modules project ["java.base"]))
         cached-modules (try
                          (read-string (slurp config-cache))
-                         (catch Exception _))]
+                         (catch Exception _))
+        jlink-path (out project)]
     (when (or (not= jlink-modules cached-modules)
-              (not (.exists (io/file out))))
-      (delete-directory (io/file out))
+              (not (.exists (io/file jlink-path))))
+      (delete-directory (io/file jlink-path))
       (eval/sh "jlink"
                "--module-path"
                jlink-module-path
                "--add-modules"
                jlink-modules
                "--output"
-               out
+               jlink-path
                "--strip-debug"
                "--no-man-pages"
                "--no-header-files"
                "--compress=2")
       (spit config-cache (pr-str jlink-modules))
-      (l/info "Created ./target/jlink/bin/java"))))
+      (l/info "Created " jlink-path))))
 
 (defn clean
   "Cleanup jlink environment"
   [project]
-  (delete-directory (io/file out)))
+  (delete-directory (io/file (out project))))
 
-(def java-exec (str out "/bin/java"))
+(defn java-exec [project] (str (out project) "/bin/java"))
 
 (defn run
   "lein run using jlink java"
   [project args]
   (jlink project "init")
-  (let [project (assoc project :java-cmd java-exec)]
+  (let [project (assoc project :java-cmd (java-exec project))]
     (apply run/run project args)))
 
 (defn test
   "lein test using jlink java"
   [project args]
   (jlink project "init")
-  (let [project (assoc project :java-cmd java-exec)]
+  (let [project (assoc project :java-cmd (java-exec project))]
     (apply test/test project args)))
+
+(defn assemble
+  "Assemble a portable java environment"
+  [project]
+  (let [jar-path (uberjar/uberjar project)
+        jlink-path (out project)
+        executable (str jlink-path "/bin/" (:name project))]
+    (jlink project "init")
+    (eval/sh "cp" jar-path (str jlink-path "/" (:name project) ".jar"))
+    (l/info (str "Copied uberjar into " jlink-path))
+    (spit executable
+          (format (slurp (io/resource "exec.sh")) (:name project)))
+    (eval/sh "chmod" "a+x" executable)
+    (l/info (str "Created executable " executable))))
+
 
 (defn ^{:help-arglists '[[project sub-command]]
         :subtasks (list #'init #'clean #'run #'test)}
@@ -82,4 +101,5 @@
      (= sub "clean") (clean project)
      (= sub "run") (run project args)
      (= sub "test") (test project args)
+     (= sub "assemble") (assemble project)
      :else (print-help))))
