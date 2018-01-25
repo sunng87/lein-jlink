@@ -51,7 +51,7 @@
                "--no-header-files"
                "--compress=2")
       (spit config-cache (pr-str jlink-modules))
-      (l/info "Created " jlink-path))))
+      (l/info "Created" jlink-path))))
 
 (defn clean
   "Cleanup jlink environment"
@@ -82,15 +82,29 @@
         executable (str jlink-path "/bin/" (:name project))]
     (jlink project "init")
     (eval/sh "cp" jar-path (str jlink-path "/" (:name project) ".jar"))
-    (l/info (str "Copied uberjar into " jlink-path))
+    (l/info (str "Copied uberjar into" jlink-path))
     (spit executable
           (format (slurp (io/resource "exec.sh")) (:name project)))
     (eval/sh "chmod" "a+x" executable)
-    (l/info (str "Created executable " executable))))
+    (l/info (str "Created executable" executable))))
+
+(defn package
+  "Create a tarball for the portable environment"
+  [project]
+  (assemble project)
+  (let [package-name (str (:target-path project)
+                          "/"
+                          (:name project)
+                          "-"
+                          (:version project)
+                          "-jlink"
+                          ".tar.gz")]
+    (eval/sh "tar" "cfzP" package-name (out project))
+    (l/info "Create package" package-name)))
 
 
 (defn ^{:help-arglists '[[project sub-command]]
-        :subtasks (list #'init #'clean #'run #'test)}
+        :subtasks (list #'init #'clean #'run #'test #'assemble #'package)}
   jlink
   "Create Java environment using jlink"
   ([project]
@@ -102,4 +116,5 @@
      (= sub "run") (run project args)
      (= sub "test") (test project args)
      (= sub "assemble") (assemble project)
+     (= sub "package") (package project)
      :else (print-help))))
