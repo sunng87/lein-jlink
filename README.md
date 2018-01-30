@@ -69,6 +69,25 @@ custom JRE directory. A launcher script is also generated in
 `lein jlink package` creates a tarball for previously generated JRE
 and can be distributed without dependencies.
 
+## Create docker image
+
+The jlink target directory can be put into a docker image for app
+distribution. I have created a minimal base image
+[alpine-jlink-base](https://github.com/sunng87/alpine-jlink-base),
+which is only 12.3MB.
+
+Assume your application is called `jlinktest`, you can create a
+Dockerfile like:
+
+```Dockerfile
+FROM sunng/alpine-jlink-base
+
+ADD target/default/jlink /opt/jlinktest
+ENTRYPOINT /opt/jlinktest/bin/jlinktest
+```
+
+The result image size can be less than 50MB.
+
 ## License
 
 Copyright © 2018 Ning Sun
