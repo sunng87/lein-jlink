@@ -82,14 +82,14 @@
         executable (str jlink-path "/bin/" (:name project))]
     (jlink project "init")
     (eval/sh "cp" jar-path (str jlink-path "/" (:name project) ".jar"))
-    (l/info (str "Copied uberjar into" jlink-path))
+    (l/info "Copied uberjar into" jlink-path)
     (spit executable
           (format (slurp (io/resource "exec.sh")) (:name project)))
     (eval/sh "chmod" "a+x" executable)
-    (l/info (str "Created executable" executable))))
+    (l/info "Created executable" executable)))
 
 (defn package
-  "Create a tarball for the portable environment"
+  "Create a tarball of the portable environment"
   [project]
   (assemble project)
   (let [package-name (str (:target-path project)
