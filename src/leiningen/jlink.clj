@@ -92,15 +92,15 @@
   "Create a tarball of the portable environment"
   [project]
   (assemble project)
-  (let [package-name (str (:target-path project)
+  (let [tarball-name (str (:target-path project)
                           "/"
                           (:name project)
                           "-"
                           (:version project)
                           "-jlink"
                           ".tar.gz")]
-    (eval/sh "tar" "cfzP" package-name (out project))
-    (l/info "Create package" package-name)))
+    (eval/sh "tar" "czf" tarball-name "-C" (out project) ".")
+    (l/info "Created tarball" tarball-name)))
 
 
 (defn ^{:help-arglists '[[project sub-command]]
