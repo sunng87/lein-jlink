@@ -1,4 +1,4 @@
-(defproject lein-jlink "0.2.1-SNAPSHOT"
+(defproject lein-jlink "0.2.1"
   :description "Package your Leiningen project as a standalone and stripped-down JVM using Java's jlink. Great for distribution and Docker images."
   :url "https://github.com/sunng87/lein-jlink"
   :license {:name "Eclipse Public License"
