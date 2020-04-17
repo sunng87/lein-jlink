@@ -27,30 +27,33 @@ your project.clj.
 
 Create a default Java environment:
 
-```
-$ lein jlink init
-```
+    $ lein jlink init
 
 By default, we create a basic Java environment with only base module
 (the `java.base`), which is only 29MB. That's could enough for your
 clojure application.
 
 To add more modules to your jlink environment, add them to
-`:jlink-modules` vector, like `["java.base" "java.sql"]`.
+`:jlink-modules` vector, like this:
 
-To add more module path, use:
-`:jlink-module-path [(str (System/getProperty "java.home") "/jmods")
-"lib/"]`.
+    :jlink-modules ["java.base" "java.sql"]
+
+To add more module paths, you can do something like this:
+
+    :jlink-module-paths ["/opt/java/javafx-sdk-14/libs"]
+
+If you are running on Windows, be sure to escape the path separator
+like so:
+
+    C:\\Program Files\\Java\\javafx-sdk-14\\libs
 
 ### Run and test your app
 
 You can use jlink generated JRE to run and test your clojure app, by
 which you can verify functionality of your app under customized JRE.
 
-```
-lein jlink run
-lein jlink test
-```
+    lein jlink run
+    lein jlink test
 
 A more flexible way is to create a profile in your project:
 
