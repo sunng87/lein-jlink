@@ -8,7 +8,8 @@
             [leiningen.jar :as jar]
             [leiningen.help :as h]
             [clojure.java.io :as io]
-            [clojure.string :as s]))
+            [clojure.string :as s])
+  (:import [java.io File]))
 
 (declare jlink)
 
@@ -30,7 +31,10 @@
   "Initialize jlink environment"
   [project]
   (let [java-home (System/getenv "JAVA_HOME")
-        jlink-modules-path (s/join ":" (concat (:jlink-modules-path project) [(str java-home "/jmods")]))
+        jlink-bin-path (s/join (File/separator) [java-home "bin" "jlink"])
+        jlink-modules-path (s/join (File/pathSeparator)
+                                   (concat (:jlink-module-paths project)
+                                           [(str java-home "/jmods")]))
         jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
         cached-modules (try
                          (read-string (slurp config-cache))
@@ -41,7 +45,7 @@
       (delete-directory (io/file jlink-path))
       (eval/sh "jlink"
                "--module-path"
-               jlink-modules-path
+               (str "\"" jlink-modules-path "\"")
                "--add-modules"
                jlink-modules
                "--output"
