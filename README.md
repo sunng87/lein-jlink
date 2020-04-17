@@ -40,12 +40,12 @@ To add more modules to your jlink environment, add them to
 
 To add more module paths, you can do something like this:
 
-    :jlink-module-paths ["/opt/java/javafx-sdk-14/libs"]
+    :jlink-module-paths ["/opt/java/javafx-sdk-14/lib"]
 
 If you are running on Windows, be sure to escape the path separator
 like so:
 
-    C:\\Program Files\\Java\\javafx-sdk-14\\libs
+    C:\\Program Files\\Java\\javafx-sdk-14\\lib
 
 ### Run and test your app
 
