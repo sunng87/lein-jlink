@@ -30,8 +30,8 @@
   "Initialize jlink environment"
   [project]
   (let [java-home (System/getenv "JAVA_HOME")
-        jlink-module-path (s/join ":" (:jlink-module-path project [(str java-home "/jmods")]))
-        jlink-modules (s/join "," (:jlink-modules project ["java.base"]))
+        jlink-modules-path (s/join ":" (concat (:jlink-modules-path project) [(str java-home "/jmods")]))
+        jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
         cached-modules (try
                          (read-string (slurp config-cache))
                          (catch Exception _))
@@ -41,7 +41,7 @@
       (delete-directory (io/file jlink-path))
       (eval/sh "jlink"
                "--module-path"
-               jlink-module-path
+               jlink-modules-path
                "--add-modules"
                jlink-modules
                "--output"
