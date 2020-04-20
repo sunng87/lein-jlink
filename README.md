@@ -17,7 +17,7 @@ If you are packaging your application for use in a Docker[3] image, this feature
 
 ## Usage
 
-First thing first, you need to migrate to Java 9 or newer. You can get the latest development kit from Adopt OpenJDK[5]:
+First you need to migrate to Java 9 or newer. You can get the latest development kit from Adopt OpenJDK[5]:
 
 + [Download JDK from AdoptOpenJDK](https://adoptopenjdk.net/)
 
@@ -53,6 +53,10 @@ The middleware will alter the way Leiningen calls out to `java` and `javac` such
 There are many modules distributed with the JDK, you can ask `java` to list them all.
 
     $ java --list-modules
+    
+If you only use modules packaged with your JDK, then you can use all of the regular Leiningen commands without issue. When you compile a build a JAR file with `lein build` or execute it with `lein run`, the middleware will make sure that the modules are on the path.
+    
+## External Modules
 
 If you are using modules that are not distributed with the JDK, you can download and add them to your project with the `:jlink-modules-paths` keyword in your `project.clj`. For instance, if you downloaded the JavaFX[6] modules from Gluon's website[7] (referred to as "jmods"), you would unpack them and then  add them like so...
 
@@ -62,68 +66,55 @@ If you are running on Windows, you will want to escape the `\` character in your
 
     :jlink-module-paths ["C:\\Program Files\\Java\\javafx-jmods-14.0.1"]
     
-If you are using modules that are not distributed with the JDK then you will want to create a custom runtime in order to package and distribute your application. If you are only using built-in modules, you can still use a custom runtime to build a much smaller distribution package, if that's something you are interested in. `;-)`
+External modules _only_ work at compile time, they cannot be passed to your default `java` command at runtime. There are two solutions:
 
-## Working with Custom Runtime Environments
++ You could download and install the SDK for the module. The plugin supports this but not all modules provide an SDK.
++ Create a runtime image and use the `java` from the image to execute your project. This is the recommended solution.
+
+### Adding a Module SDK
+
+If you happen to have the SDK for a module installed and you don't want to build a custom runtime image, you can add the path to the SDK to your `project.clj` file on with the `:jlink-sdk-paths` key. For example...
+
+    :jlink-sdk-paths ["C:\\Program Files\\Java\\javafx-sdk-14\\lib"]
+    
+That being said, building a custom image might be easier since you don't need to install anything except the modules.
+    
+## Buidling a Custom Runtime Environment
+
+A custom runtime environment will build a new Java runtime for your project, including _only_ the modules your project uses. If you have external modules but lack access to an SDK, you will _need_ to create a custom runtime in order to actually run your project.
 
 First you need to let the plugin know that you want to use a custom runtime when interacting with your project. Set the `:jlink-custom-jre` key in your `project.clj` to `true`.
 
     :jlink-custom-jre true
+    
+This flag also lets the middleware know that it shouldn't use the `java` available in `JAVA_HOME` but should use the `java` in the custom runtime image instead.
 
 Create a custom Java environment with the plugin's `init` task. It will call out to the `jlink` tool that is bundled with your JDK to create a new "runtime image". This image will be in the "jlink" directory at the root of your project.
 
     lein jlink init
 
-By default, the plugin will create a basic Java environment with only base module (the `java.base`), which is only 29MB. This represents the minimum and it might be enough for your Clojure application, if you don't use any other modules.
+By default, the plugin will create a basic Java environment with only base module (the `java.base`), which is only 29MB. This represents the minimum and it might be enough for your Clojure application, if you don't use any other modules. If you do use other modules, you can add them through the `:jlink-modules` key in your `project.clj`. You don't need to include `java.base`, that one is automatically pulled in by the plugin.
 
-If you do use other modules, you can add them through the `:jlink-modules` key in your `project.clj`.
-
-
-
-If you have an external module, like JavaFX, you may add more module paths with the `:jlink-modules-paths` key.
-
-    :jlink-module-paths ["/opt/java/javafx-sdk-14/lib"]
-
-If you are running on Windows, be sure to escape the path separator like so:
-
-    C:\\Program Files\\Java\\javafx-sdk-14\\lib
-
-### Run and Test Your Project
+With your custom runtime created, you can now build and run your project with the regular Leiningen commands.
 
 
+## Assembling and Packaging
 
-You can use jlink generated JRE to run and test your clojure app, by
-which you can verify functionality of your app under customized JRE.
+By running `lein jlink assemble`, we create a uberjar and move it into the custom runtime. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
 
-    lein jlink run
-    lein jlink test
+    $ cd image
+    $ bin\java -jar my-uberjar.jar
+    
+Your application will launch and it will have access to all of the required modules.
 
-A more flexible way is to create a profile in your project:
+When we package with `lein jlink package`, we will invoke `jpackage` to bundle up the image and generate platform specific pacakges for Linux, MacOS and Windows. I couldn't find a proper website for the tool, but Vivd Code has a decent article about it[8].
 
-```clj
-:profiles {
-  :jlink {:java-cmd "./target/jlink/bin/java"}
-}
-```
+## Create Docker Image
 
-### Assemble and package
+The custom image directory can be copied into a docker image for distribution. I have created a minimal base image
+[alpine-jlink-base](https://github.com/sunng87/alpine-jlink-base), which is only 12.3MB and is suitable for running many applications. `;-)`
 
-By running `lein jlink assemble`, we create a uberjar and put it into
-custom JRE directory. A launcher script is also generated in
-`target/jlink/bin` that can run your application with this JRE.
-
-`lein jlink package` creates a tarball for previously generated JRE
-and can be distributed without dependencies.
-
-## Create docker image
-
-The jlink target directory can be put into a docker image for app
-distribution. I have created a minimal base image
-[alpine-jlink-base](https://github.com/sunng87/alpine-jlink-base),
-which is only 12.3MB.
-
-Assume your application is called `jlinktest`, you can create a
-Dockerfile like:
+Assume your application is called `jlinktest`, you can create a Dockerfile that looks like this...
 
 ```Dockerfile
 FROM sunng/alpine-jlink-base
@@ -132,7 +123,7 @@ ADD target/default/jlink /opt/jlinktest
 ENTRYPOINT /opt/jlinktest/bin/jlinktest
 ```
 
-The result image size can be less than 50MB.
+The result image size can be less than 50MB!
 
 ## License
 
@@ -149,3 +140,4 @@ your option) any later version.
 [5]: "AdoptOpenJDK Website" https://adoptopenjdk.net/
 [6]: "JavaFX Website" https://openjfx.io/
 [7]: "Gluon JavaFX Download" https://gluonhq.com/products/javafx/
+[8]: "Vivid Code Article on JPackage" https://vividcode.io/package-java-applications-using-jpackage-in-jdk-14/

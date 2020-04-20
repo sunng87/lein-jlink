@@ -12,7 +12,8 @@
             [robert.hooke :as hooke]
             [clojure.java.io :as io]
             [clojure.string :as s])
-  (:import [java.io File]))
+  (:import [java.io File]
+           [java.io FilenameFilter]))
 
 (declare jlink)
 
@@ -84,6 +85,10 @@
   "Alters the `java-cmd` and `javac-options` project keys for use with a custom
   runtime image or additional Java modules and paths"
   (let [java-home (System/getenv "JAVA_HOME")
+        jlink-sdk-path (str "\""
+                            (s/join (File/pathSeparator)
+                                    (:jlink-sdk-paths project))
+                            "\"")
         jlink-modules-path (str "\""
                                 (s/join (File/pathSeparator)
                                         (concat (:jlink-module-paths project)
@@ -94,7 +99,6 @@
                          (read-string (slurp config-cache))
                          (catch Exception _))
         jlink-image-path (out project)]
-
     (merge project
            (if (:jlink-custom-jre project)
 
@@ -104,7 +108,10 @@
              ;; stick with the default java
              {:java-cmd (:java-cmd project)})
 
-           {:javac-options ["--module-path" jlink-modules-path "--add-modules" jlink-modules]})))
+           {:javac-options ["--module-path" jlink-modules-path
+                            "--add-modules" jlink-modules]
+            :jvm-opts ["--module-path" jlink-sdk-path
+                       "--add-modules" jlink-modules]})))
 
 (defn clean
   "Deletes the custom image"
@@ -116,11 +123,19 @@
   "Builds an uberjar for the project and copies into the custom runtime image"
   [project]
   (init project)
-  (let [jar-path (uberjar/uberjar project)
-        jlink-path (out project)
-        executable (str jlink-path (File/separator) "bin" (File/separator) (:name project))]
-    (io/copy (io/file jar-path) (io/file (str jlink-path "/" (:name project) ".jar")))
-    (l/info "Copied uberjar into" jlink-path)))
+  (let [uberjar-file (io/file (uberjar/uberjar project))
+        uberjar-parent-file (.getParentFile uberjar-file)
+        jar-files (.listFiles uberjar-parent-file
+                              (reify FilenameFilter
+                                (accept [this dir filename]
+                                  (s/ends-with? filename ".jar"))))
+        jlink-path (out project)]
+
+    (doall (map #(io/copy %
+                          (io/file (str jlink-path
+                                        (File/separator) (.getName %))))
+                jar-files))
+    (l/info "Copied JAR files into" jlink-path)))
 
 (defn package
   "Package the project for distribution with `jpackage`"
