@@ -18,23 +18,34 @@
 
 (def config-cache ".lein-jlink")
 
-(defn- delete-directory [f]
+(defn- delete-directory
+  "Deletes the provided path"
+  [f]
   (when (.isDirectory f)
     (doseq [f0 (.listFiles f)]
       (delete-directory f0)))
   (io/delete-file f true))
 
-(defn out [project]
+(defn out
+  "Returns the path to the custom runtime image"
+  [project]
   (let [parent (.getParent (File. (:target-path project)))]
        (str parent
             (File/separator)
-            "jlink")))
+            "image")))
 
-(defn- print-help []
+(defn java-exec
+  "Returns the path to the `java` command bundled with the custom runtime"
+  [project]
+  (str (out project) "/bin/java"))
+
+(defn- print-help
+  "Displays the help message for the plugin"
+  []
   (h/help nil "jlink"))
 
-(defn init
-  "Initialize jlink environment"
+(defn- init-runtime
+  "Uses `jlink` to create a custom runtime environment"
   [project]
   (let [java-home (System/getenv "JAVA_HOME")
         jlink-bin-path (s/join (File/separator) [java-home "bin" "jlink"])
@@ -63,9 +74,16 @@
       (spit config-cache (pr-str jlink-modules))
       (l/info "Created" jlink-path))))
 
+(defn init
+  "Creates the custom runtime environment, if required."
+  [project]
+  (if (:jlink-custom-jre project)
+    (init-runtime project)))
+
 (defn middleware [project]
+  "Alters the `java-cmd` and `javac-options` project keys for use with a custom
+  runtime image or additional Java modules and paths"
   (let [java-home (System/getenv "JAVA_HOME")
-        jlink-bin-path (s/join (File/separator) [java-home "bin" "jlink"])
         jlink-modules-path (str "\""
                                 (s/join (File/pathSeparator)
                                         (concat (:jlink-module-paths project)
@@ -75,56 +93,44 @@
         cached-modules (try
                          (read-string (slurp config-cache))
                          (catch Exception _))
-        jlink-path (out project)]
+        jlink-image-path (out project)]
+
     (merge project
-           {:java-cmd (s/join (File/separator) [jlink-path "bin" "java"])}
+           (if (:jlink-custom-jre project)
+
+             ;; use our custom image's java
+             {:java-cmd (java-exec project)}
+
+             ;; stick with the default java
+             {:java-cmd (:java-cmd project)})
+
            {:javac-options ["--module-path" jlink-modules-path "--add-modules" jlink-modules]})))
 
-(defn compile-hook [task & args]
- (apply task args))
-
 (defn clean
-  "Cleanup jlink environment"
+  "Deletes the custom image"
   [project]
   (delete-directory (io/file (out project)))
   (clean/clean project))
 
-(defn java-exec [project] (str (out project) "/bin/java"))
-
-(defn run
-  "lein run using jlink java"
-  [project args]
-  (init project)
-  (let [project (assoc project :java-cmd (java-exec project))]
-    (l/info (str (:java-cmd project)))
-    (apply run/run project args)))
-
-(defn test
-  "lein test using jlink java"
-  [project args]
-  (init project)
-  (let [project (assoc project :java-cmd (java-exec project))]
-    (apply test/test project args)))
-
 (defn assemble
-  "Assemble a portable java environment"
+  "Builds an uberjar for the project and copies into the custom runtime image"
   [project]
   (init project)
   (let [jar-path (uberjar/uberjar project)
         jlink-path (out project)
-        executable (str jlink-path "/bin/" (:name project))]
+        executable (str jlink-path (File/separator) "bin" (File/separator) (:name project))]
     (io/copy (io/file jar-path) (io/file (str jlink-path "/" (:name project) ".jar")))
     (l/info "Copied uberjar into" jlink-path)))
 
 (defn package
-  "Create a tarball of the portable environment"
+  "Package the project for distribution with `jpackage`"
   [project]
   (assemble project)
   (l/info "Someday we'll call jpackage and really do something! :-D"))
 
 
 (defn ^{:help-arglists '[[project sub-command]]
-        :subtasks (list #'init #'clean #'run #'test #'assemble #'package)}
+        :subtasks (list #'init #'clean #'assemble #'package)}
   jlink
   "Create Java environment using jlink"
   ([project]
@@ -133,8 +139,6 @@
    (cond
      (= sub "init") (init project)
      (= sub "clean") (clean project)
-     (= sub "run") (run project args)
-     (= sub "test") (test project args)
      (= sub "assemble") (assemble project)
      (= sub "package") (package project)
      :else (print-help))))
