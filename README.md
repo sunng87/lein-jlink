@@ -2,8 +2,7 @@
 
 A [Leiningen][0] plugin for custom Java environment.
 
-[![Clojars
-Project](https://img.shields.io/clojars/v/lein-jlink.svg)](https://clojars.org/lein-jlink)
+[![Clojars Project](https://img.shields.io/clojars/v/lein-jlink.svg)](https://clojars.org/lein-jlink)
 
 ## Motivation
 
@@ -149,13 +148,13 @@ Copyright © 2018 Ning Sun
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
 
-[0]: "Leiningen Website" https://leiningen.org/
-[1]: "Java JPMS Introduction" https://www.oracle.com/corporate/features/understanding-java-9-modules.html
-[2]: "OpenJDK, Modules Quick Start" https://openjdk.java.net/projects/jigsaw/quick-start
-[3]: "Docker Website" https://www.docker.com/
-[4]: "Jetty Adapter" https://github.com/sunng87/ring-jetty9-adapter
-[5]: "AdoptOpenJDK Website" https://adoptopenjdk.net/
-[6]: "JavaFX Website" https://openjfx.io/
-[7]: "Gluon JavaFX Download" https://gluonhq.com/products/javafx/
-[8]: "Vivid Code Article on JPackage" https://vividcode.io/package-java-applications-using-jpackage-in-jdk-14/
-[9]: 'Alpine Jlink Docker Image" https://github.com/sunng87/alpine-jlink-base
+[0]: https://leiningen.org/
+[1]: https://www.oracle.com/corporate/features/understanding-java-9-modules.html
+[2]: https://openjdk.java.net/projects/jigsaw/quick-start
+[3]: https://www.docker.com/
+[4]: https://github.com/sunng87/ring-jetty9-adapter
+[5]: https://adoptopenjdk.net/
+[6]: https://openjfx.io/
+[7]: https://gluonhq.com/products/javafx/
+[8]: https://vividcode.io/package-java-applications-using-jpackage-in-jdk-14/
+[9]: https://github.com/sunng87/alpine-jlink-base
