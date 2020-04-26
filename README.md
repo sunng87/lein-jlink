@@ -1,16 +1,16 @@
 # lein-jlink
 
-A [Leiningen][0] plugin for custom Java environment.
+A [Leiningen][0] plugin for working with Java modules
 
 [![Clojars Project](https://img.shields.io/clojars/v/lein-jlink.svg)](https://clojars.org/lein-jlink)
 
 ## Motivation
 
-The [Java Platform Modules System (JPMS)][1], commonly referred to as just "modules",  have been a [part of the platform since Java 9][2]. Modules are bigger than packages and it's likely that some of your favorite Java packages have been broken out into modules. Many modules are bundled with the standard runtime and development kits for Java but some are not. For instance, JavaFX is a module that is not packaged with Java and needs to be managed in a different way.
+The [Java Platform Modules System (JPMS)][1], commonly referred to as just "modules",  have been a [part of the platform since Java 9][2]. Modules are bigger than packages and it's likely that some of your favorite Java packages (like "java.sql") have been broken out into modules. Many modules are bundled with the standard runtime and development kits for Java (like "java.sql"), you don't have to do much of anything special to use the. Others are now distributed separately and need to be managed specially if you want to use them, for instance, JavaFX.
 
-This plugin provides some additional tasks and middleware to Leiningen that makes it easier to interact with the Java module system. It makes it easier to include modules in your project and to interact with some of the module-specific tools like `jlink` and `jpackage`.
+This plugin provides some additional tasks and middleware for Leiningen that makes it easier to interact with the Java module system. It makes it easier to include modules in your project and to interact with the module-specific tool like `jlink`.
 
-You might be particularly interest in these tools as it provides an easy way to build and use customized runtime that includes _only_ the modules your project needs to run. You can then package this smaller runtime with your application to provide one small, self-contained executable.
+In addition to making it easier to interact with external modules, `jlink` also provides an way to build a customized Java runtime that includes _only_ the modules your project needs to run. You can then package this smaller runtime with your application to provide self-contained distribution package.
 
 If you are packaging your application for use in a [Docker][3] image, this feature is a pretty good news for you: The minimal JRE is only 29MB. And it's enough to run a hello world Ring application, using [`jetty-adapter`][4]. The overall size (app + dependency jars + custom runtime) is only 37MB, and 22MB in gzipped tarball.
 
@@ -20,7 +20,7 @@ First you need to migrate to Java 9 or newer. You can get the latest development
 
 + [Download JDK from AdoptOpenJDK](https://adoptopenjdk.net/)
 
-This plugin assumes that you have set a valid `JAVA_HOME` environment variable and that it will be available when Leiningen runs. If you don't have it set, go ahead and set `JAVA_HOME` now. The plugin uses this variable to find the Java modules distributed with your JDK as well as to locate tools like `jlink` and `jpackage`.
+This plugin assumes that you have set a valid `JAVA_HOME` environment variable and that it will be available when Leiningen runs. If you don't have it set, go ahead and set `JAVA_HOME` now. The plugin uses this variable to find the Java modules distributed with your JDK as well as to locate tools like `jlink` and `jpackage`. If you prefer to use another JDK, you can provide it with the `jlink-jdk-path` on your `project.clj` file.
 
 Next, add this plugin to your `project.clj` file in the `:plugins` section.
 
@@ -34,18 +34,14 @@ Your project should look something like this...
 
     {defproject myorganization/myproject
       ...
-      :plugins [
-                ...
-                [lein-jlink "0.2.1"]
-               ]
-      :middleware [
-                   ...
-                   [leiningen.jlink/middleware]
-                  ]
+      :plugins    [...
+                    [lein-jlink "0.2.1"]]
+      :middleware [...
+                    [leiningen.jlink/middleware]]
       ...
     }
     
-The middleware will alter the way Leiningen calls out to `java` and `javac` such that these calls include references to the modules that your project needs. By default only the `java.base` module is included, if you need other modules you can simply add them to the `:jlink-modules` key of your `project.clj` file.
+The middleware will alter the way Leiningen calls out to `java` and `javac` such that it calls out to the correct ones and that these calls include references to the modules that your project needs. By default only the `java.base` module is included, if you need other modules you can simply add them to the `:jlink-modules` key of your `project.clj` file.
 
     :jlink-modules ["java.sql"]
     
@@ -57,7 +53,7 @@ If you only use modules packaged with your JDK, then you can use all of the regu
     
 ### External Modules
 
-If you are using modules that are not distributed with the JDK, you can download and add them to your project with the `:jlink-modules-paths` keyword in your `project.clj`. For instance, if you downloaded the [JavaFX modules][6] from [Gluon's website][7] (referred to as "jmods"), you would unpack them and then  add them like so...
+If you are using modules that are not distributed with the JDK, you can download and add them to your project with the `:jlink-modules-paths` keyword in your `project.clj`. For instance, if you downloaded the [JavaFX modules][6] from [Gluon's website][7] (referred to as "jmods"), you would unpack them somewhere on your machine and then add a reference to them like so...
 
     :jlink-module-paths ["/opt/java/javafx-jmods-14.0.1"]
     
@@ -67,8 +63,8 @@ If you are running on Windows, you will want to escape the `\` character in your
     
 External modules _only_ work at compile time, they cannot be passed to your default `java` command at runtime. There are two solutions:
 
-+ You could download and install the SDK for the module. The plugin supports this but not all modules provide an SDK.
-+ Create a runtime image and use the `java` from the image to execute your project. This is the recommended solution.
++ You could download and install the SDK for the module. This plugin supports this but not all modules provide an SDK.
++ Create a runtime image and use the `java` command from the image to execute your project; this is the recommended solution.
 
 #### Adding a Module SDK
 
@@ -86,9 +82,9 @@ First you need to let the plugin know that you want to use a custom runtime when
 
     :jlink-jre-image true
     
-This flag also lets the middleware know that it shouldn't use the `java` available in `JAVA_HOME` but should use the `java` in the custom runtime image instead.
+This flag also lets the middleware know that it shouldn't use the `java` available in `JAVA_HOME` (or the JDK you specified) but should use the `java` in the custom runtime image instead.
 
-Create a custom Java environment with the plugin's `init` task. It will call out to the `jlink` tool that is bundled with your JDK to create a new "runtime image". This image will be in the "jlink" directory at the root of your project.
+Create a custom Java environment with the plugin's `init` task. It will call out to the `jlink` tool that is bundled with your JDK to create a new "runtime image". This image will be in the "image" directory at the root of your project. If you would like to store the runtime image in a different location, you can provide that location with the `:jlink-jre-image-path` key in your `project.clj` file.
 
     lein jlink init
 
@@ -112,19 +108,18 @@ The plugin's middleware will take care of correctly setting the path to `java` a
     $ lein run
 
 
-### Assembling and Packaging
+### Assembling
 
-By running `lein jlink assemble`, we create a uberjar and copy it into the custom runtime. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
+By running `lein jlink assemble`, we call out to Leiningen to create an uberjar and then move it into the custom runtime image directory. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
 
     $ cd image
     $ bin\java -jar my-uberjar.jar
     
-Your application will launch and it will have access to all of the required modules. You may customize the name of the directory that's used to hold your custom JRE image with the `:jlink-jre-image` key in your `project.clj`.
+Your application will launch and it will have access to all of the required modules.
 
 ### Create a Docker Image
 
-The custom image directory can be copied into a docker image for distribution. I have created a minimal base image
-using [Alpine Linux][9], which is only 12.3MB and is suitable for running many applications. `;-)`
+The custom image directory can be copied into a docker image for distribution. We have created a minimal base image using [Alpine Linux][9], which is only 12.3MB and is suitable for running many applications. `;-)`
 
 Assume your application is called `jlinktest`, you can create a Dockerfile that looks like this...
 
