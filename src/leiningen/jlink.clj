@@ -53,11 +53,7 @@
 (defn middleware [project]
   "Alters the `java-cmd` and `javac-options` project keys for use with a custom
   runtime image or additional Java modules and paths"
-<<<<<<< Updated upstream
-  (let [java-home (System/getenv "JAVA_HOME")
-=======
   (let [jdk-path (jdk-path project)
->>>>>>> Stashed changes
         jlink-sdk-path (if (:jlink-sdk-paths project)
                            (str "\""
                                 (s/join (File/pathSeparator)
@@ -66,11 +62,7 @@
         jlink-modules-path (str "\""
                                 (s/join (File/pathSeparator)
                                         (concat (:jlink-module-paths project)
-<<<<<<< Updated upstream
-                                                [(str java-home "/jmods")]))
-=======
                                                 [(str jdk-path "/jmods")]))
->>>>>>> Stashed changes
                                 "\"")
         jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
         cached-modules (try
@@ -99,11 +91,7 @@
         jlink-bin-path (s/join (File/separator) [jdk-path "bin" "jlink"])
         jlink-modules-path (s/join (File/pathSeparator)
                                    (concat (:jlink-module-paths project)
-<<<<<<< Updated upstream
-                                           [(str java-home (File/separator) "jmods")]))
-=======
                                            [(str jdk-path (File/separator) "jmods")]))
->>>>>>> Stashed changes
         jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
         cached-modules (try
                          (read-string (slurp config-cache))
@@ -136,13 +124,6 @@
   "Compiles the module-info.java file for the project"
   [project-in]
   (let [project (middleware project-in)
-<<<<<<< Updated upstream
-        java-home (System/getenv "JAVA_HOME")
-        javac-bin-path (s/join (File/separator) [java-home "bin" "javac"])
-        jlink-modules-path (s/join (File/pathSeparator)
-                                   (concat (:jlink-module-paths project)
-                                           [(str java-home (File/separator) "jmods")
-=======
         jdk-path (jdk-path project)
         javac-bin-path (s/join (File/separator) [jdk-path "bin" "javac"])
         jlink-sdk-path (if (:jlink-sdk-paths project)
@@ -153,7 +134,6 @@
         jlink-modules-path (s/join (File/pathSeparator)
                                    (concat (:jlink-module-paths project)
                                            [(str jdk-path (File/separator) "jmods")
->>>>>>> Stashed changes
                                             (:compile-path project)]))
         jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
         sh-args (concat [javac-bin-path]
@@ -179,33 +159,6 @@
   "Builds an uberjar for the project and copies into the custom runtime image"
   [project]
   (init project)
-<<<<<<< Updated upstream
-  (let [java-home (System/getenv "JAVA_HOME")
-        jar-bin-path (s/join (File/separator) [java-home "bin" "jar"])
-        uberjar-file (io/file (uberjar/uberjar project))
-        jlink-path (out project)]
-    (if (:jlink-module-info project)
-      (do (module-info project)
-          (eval/sh jar-bin-path
-                   "uf"
-                   (.getAbsolutePath uberjar-file)
-                   "-C"
-                   (s/join (File/separator) [(:compile-path project)])
-                   "module-info.class")))
-    (io/copy uberjar-file
-             (io/file (str jlink-path (File/separator) (.getName uberjar-file))))
-    (l/info "Copied uberjar into" jlink-path)))
-
-(defn- package
-  "Package the project for distribution with `jpackage`"
-  [project]
-  (assemble project)
-  (let [java-home (System/getenv "JAVA_HOME")
-        jpackage-bin-path (s/join (File/separator) [java-home "bin" "jpackage"])]
-    )
-  (l/info "Someday we'll call jpackage and really do something! :-D"))
-
-=======
   (let [jdk-path (jdk-path project)
         jar-bin-path (s/join (File/separator) [jdk-path "bin" "jar"])
         uberjar-file (io/file (uberjar/uberjar project))
@@ -214,7 +167,6 @@
              (io/file (str jlink-path
                            (File/separator) (.getName uberjar-file))))
     (l/info "Copied uberjar file into" jlink-path)))
->>>>>>> Stashed changes
 
 (defn ^{:help-arglists '[[project sub-command]]
         :subtasks (list #'init #'clean #'assemble)}
