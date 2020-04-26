@@ -15,25 +15,23 @@
   (:import [java.io File]
            [java.io FilenameFilter]))
 
-(declare jlink)
-
+;; name of cache configuration file
 (def config-cache ".lein-jlink")
 
 (defn- delete-directory
   "Deletes the provided path"
-  [f]
-  (when (.isDirectory f)
-    (doseq [f0 (.listFiles f)]
-      (delete-directory f0)))
-  (io/delete-file f true))
+  [path]
+  (when (.isDirectory path)
+    (doseq [file (.listFiles path)]
+      (delete-directory file)))
+  (io/delete-file path true))
 
 (defn out
   "Returns the path to the custom runtime image"
   [project]
-  (let [parent (.getParent (File. (:target-path project)))]
-       (str parent
-            (File/separator)
-            "image")))
+  (if (:jlink-jre-image-path project)
+    (:jlink-jre-image-path project)
+    (str (.getParent (File. (:target-path project))) (File/separator) "image")))
 
 (defn java-exec
   "Returns the path to the `java` command bundled with the custom runtime"
@@ -45,6 +43,40 @@
   []
   (h/help nil "jlink"))
 
+(defn middleware [project]
+  "Alters the `java-cmd` and `javac-options` project keys for use with a custom
+  runtime image or additional Java modules and paths"
+  (let [java-home (System/getenv "JAVA_HOME")
+        jlink-sdk-path (if (:jlink-sdk-paths project)
+                           (str "\""
+                                (s/join (File/pathSeparator)
+                                        (:jlink-sdk-paths project))
+                                "\""))
+        jlink-modules-path (str "\""
+                                (s/join (File/pathSeparator)
+                                        (concat (:jlink-module-paths project)
+                                                [(str java-home "/jmods")]))
+                                "\"")
+        jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
+        cached-modules (try
+                         (read-string (slurp config-cache))
+                         (catch Exception _))
+        jlink-image-path (out project)]
+    (merge project
+           (if (:jlink-jre-image project)
+
+             ;; use our custom image's java
+             {:java-cmd (java-exec project)}
+
+             ;; stick with the default java
+             {:java-cmd (:java-cmd project)})
+
+           {:javac-options ["--module-path" jlink-modules-path
+                            "--add-modules" jlink-modules]
+            :jvm-opts (into ["--add-modules" jlink-modules]
+                            (if jlink-sdk-path
+                                ["--module-path" jlink-sdk-path]))})))
+
 (defn- init-runtime
   "Uses `jlink` to create a custom runtime environment"
   [project]
@@ -52,7 +84,7 @@
         jlink-bin-path (s/join (File/separator) [java-home "bin" "jlink"])
         jlink-modules-path (s/join (File/pathSeparator)
                                    (concat (:jlink-module-paths project)
-                                           [(str java-home "/jmods")]))
+                                           [(str java-home (File/separator) "jmods")]))
         jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
         cached-modules (try
                          (read-string (slurp config-cache))
@@ -76,42 +108,34 @@
       (l/info "Created" jlink-path))))
 
 (defn init
-  "Creates the custom runtime environment, if required."
+  "Creates the custom runtime environment, if required by the project."
   [project]
-  (if (:jlink-custom-jre project)
+  (if (:jlink-jre-image project)
     (init-runtime project)))
 
-(defn middleware [project]
-  "Alters the `java-cmd` and `javac-options` project keys for use with a custom
-  runtime image or additional Java modules and paths"
-  (let [java-home (System/getenv "JAVA_HOME")
-        jlink-sdk-path (str "\""
-                            (s/join (File/pathSeparator)
-                                    (:jlink-sdk-paths project))
-                            "\"")
-        jlink-modules-path (str "\""
-                                (s/join (File/pathSeparator)
-                                        (concat (:jlink-module-paths project)
-                                                [(str java-home "/jmods")]))
-                                "\"")
+(defn- module-info
+  "Compiles the module-info.java file for the project"
+  [project-in]
+  (let [project (middleware project-in)
+        java-home (System/getenv "JAVA_HOME")
+        javac-bin-path (s/join (File/separator) [java-home "bin" "javac"])
+        jlink-modules-path (s/join (File/pathSeparator)
+                                   (concat (:jlink-module-paths project)
+                                           [(str java-home (File/separator) "jmods")
+                                            (:compile-path project)]))
         jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
-        cached-modules (try
-                         (read-string (slurp config-cache))
-                         (catch Exception _))
-        jlink-image-path (out project)]
-    (merge project
-           (if (:jlink-custom-jre project)
-
-             ;; use our custom image's java
-             {:java-cmd (java-exec project)}
-
-             ;; stick with the default java
-             {:java-cmd (:java-cmd project)})
-
-           {:javac-options ["--module-path" jlink-modules-path
-                            "--add-modules" jlink-modules]
-            :jvm-opts ["--module-path" jlink-sdk-path
-                       "--add-modules" jlink-modules]})))
+        sh-args (concat [javac-bin-path]
+                        ["--module-path"
+                         jlink-modules-path
+                         "--add-modules"
+                         jlink-modules
+                         "-classpath"
+                         (:compile-path project)
+                         "-d"
+                         (:compile-path project)
+                         (:jlink-module-info project)])]
+    (l/info sh-args)
+    (apply eval/sh sh-args)))
 
 (defn clean
   "Deletes the custom image"
@@ -123,29 +147,34 @@
   "Builds an uberjar for the project and copies into the custom runtime image"
   [project]
   (init project)
-  (let [uberjar-file (io/file (uberjar/uberjar project))
-        uberjar-parent-file (.getParentFile uberjar-file)
-        jar-files (.listFiles uberjar-parent-file
-                              (reify FilenameFilter
-                                (accept [this dir filename]
-                                  (s/ends-with? filename ".jar"))))
+  (let [java-home (System/getenv "JAVA_HOME")
+        jar-bin-path (s/join (File/separator) [java-home "bin" "jar"])
+        uberjar-file (io/file (uberjar/uberjar project))
         jlink-path (out project)]
+    (if (:jlink-module-info project)
+      (do (module-info project)
+          (eval/sh jar-bin-path
+                   "uf"
+                   (.getAbsolutePath uberjar-file)
+                   "-C"
+                   (s/join (File/separator) [(:compile-path project)])
+                   "module-info.class")))
+    (io/copy uberjar-file
+             (io/file (str jlink-path (File/separator) (.getName uberjar-file))))
+    (l/info "Copied uberjar into" jlink-path)))
 
-    (doall (map #(io/copy %
-                          (io/file (str jlink-path
-                                        (File/separator) (.getName %))))
-                jar-files))
-    (l/info "Copied JAR files into" jlink-path)))
-
-(defn package
+(defn- package
   "Package the project for distribution with `jpackage`"
   [project]
   (assemble project)
+  (let [java-home (System/getenv "JAVA_HOME")
+        jpackage-bin-path (s/join (File/separator) [java-home "bin" "jpackage"])]
+    )
   (l/info "Someday we'll call jpackage and really do something! :-D"))
 
 
 (defn ^{:help-arglists '[[project sub-command]]
-        :subtasks (list #'init #'clean #'assemble #'package)}
+        :subtasks (list #'init #'clean #'assemble)}
   jlink
   "Create Java environment using jlink"
   ([project]
@@ -155,5 +184,4 @@
      (= sub "init") (init project)
      (= sub "clean") (clean project)
      (= sub "assemble") (assemble project)
-     (= sub "package") (package project)
      :else (print-help))))

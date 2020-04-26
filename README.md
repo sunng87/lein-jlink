@@ -84,7 +84,7 @@ A custom runtime environment will build a new Java runtime for your project, inc
 
 First you need to let the plugin know that you want to use a custom runtime when interacting with your project. Set the `:jlink-custom-jre` key in your `project.clj` to `true`.
 
-    :jlink-custom-jre true
+    :jlink-jre-image true
     
 This flag also lets the middleware know that it shouldn't use the `java` available in `JAVA_HOME` but should use the `java` in the custom runtime image instead.
 
@@ -114,16 +114,12 @@ The plugin's middleware will take care of correctly setting the path to `java` a
 
 ### Assembling and Packaging
 
-By running `lein jlink assemble`, we create a uberjar and move it into the custom runtime. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
+By running `lein jlink assemble`, we create a uberjar and copy it into the custom runtime. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
 
     $ cd image
     $ bin\java -jar my-uberjar.jar
     
-Your application will launch and it will have access to all of the required modules.
-
-When we package with `lein jlink package`, we will invoke `jpackage` to bundle up the image and generate platform specific pacakges for Linux, MacOS and Windows. I couldn't find a proper website for the tool, but [Vivid Code has a decent article about it][8].
-
-Packaging doesn't actually work yet, it's currently stubbed out but we are working on it!
+Your application will launch and it will have access to all of the required modules. You may customize the name of the directory that's used to hold your custom JRE image with the `:jlink-jre-image` key in your `project.clj`.
 
 ### Create a Docker Image
 
