@@ -73,22 +73,15 @@
                          (catch Exception _))
         jlink-image-path (out project)]
     (merge project
-           (if (:jlink-image project)
-
-             ;; use our custom image's java
-             {:java-cmd (java-exec project)}
-
-             ;; stick with the default java
-             {:java-cmd (:java-cmd project)})
-
-           {:javac-options ["--module-path" jlink-modules-path
+           {:java-cmd (java-exec project)
+            :javac-options ["--module-path" jlink-modules-path
                             "--add-modules" jlink-modules]
             :jvm-opts (into ["--add-modules" jlink-modules]
                             (if jlink-sdk-path
                                 ["--module-path" jlink-sdk-path]))})))
 
-(defn- init-runtime
-  "Uses `jlink` to create a custom runtime environment"
+(defn init
+  "Creates the custom runtime environment for the project"
   [project]
   (let [jdk-path (jdk-path project)
         jlink-bin-path (s/join (File/separator) [jdk-path "bin" "jlink"])
@@ -117,41 +110,6 @@
                "--compress=2")
       (spit config-cache (pr-str jlink-modules))
       (l/info "Created" jlink-path))))
-
-(defn init
-  "Creates the custom runtime environment, if required by the project."
-  [project]
-  (if (:jlink-image project)
-    (init-runtime project)))
-
-(defn- module-info
-  "Compiles the module-info.java file for the project"
-  [project-in]
-  (let [project (middleware project-in)
-        jdk-path (jdk-path project)
-        javac-bin-path (s/join (File/separator) [jdk-path "bin" "javac"])
-        jlink-sdk-path (if (:jlink-sdk-paths project)
-                         (str "\""
-                              (s/join (File/pathSeparator)
-                                      (:jlink-sdk-paths project))
-                              "\""))
-        jlink-modules-path (s/join (File/pathSeparator)
-                                   (concat (:jlink-module-paths project)
-                                           [(str jdk-path (File/separator) "jmods")
-                                            (:compile-path project)]))
-        jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
-        sh-args (concat [javac-bin-path]
-                        ["--module-path"
-                         jlink-modules-path
-                         "--add-modules"
-                         jlink-modules
-                         "-classpath"
-                         (:compile-path project)
-                         "-d"
-                         (:compile-path project)
-                         (:jlink-module-info project)])]
-    (l/info sh-args)
-    (apply eval/sh sh-args)))
 
 (defn clean
   "Deletes the custom image"
