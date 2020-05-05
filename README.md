@@ -76,15 +76,9 @@ That being said, building a custom image might be easier since you don't need to
     
 ### Buidling a Custom Runtime Environment
 
-A custom runtime environment will build a new Java runtime for your project, including _only_ the modules your project uses. If you have external modules but lack access to an SDK, you will _need_ to create a custom runtime in order to actually run your project.
+The plugin will build up a custom runtime environment (Java runtime) for your project, including _only_ the modules your project uses. If you have external modules but lack access to an SDK, you will _need_ to create a custom runtime in order to actually run your project.
 
-First you need to let the plugin know that you want to use a custom runtime when interacting with your project. Set the `:jlink-custom-jre` key in your `project.clj` to `true`.
-
-    :jlink-jre-image true
-    
-This flag also lets the middleware know that it shouldn't use the `java` available in `JAVA_HOME` (or the JDK you specified) but should use the `java` in the custom runtime image instead.
-
-Create a custom Java environment with the plugin's `init` task. It will call out to the `jlink` tool that is bundled with your JDK to create a new "runtime image". This image will be in the "image" directory at the root of your project. If you would like to store the runtime image in a different location, you can provide that location with the `:jlink-jre-image-path` key in your `project.clj` file.
+Create a custom Java environment with the plugin's `init` task. It will call out to the `jlink` tool that is bundled with your JDK to create a new "runtime image". This image will be in the "image" directory at the root of your project. If you would like to store the runtime image in a different location, you can provide that location with the `:jlink-image-path` key in your `project.clj` file.
 
     lein jlink init
 
@@ -110,12 +104,20 @@ The plugin's middleware will take care of correctly setting the path to `java` a
 
 ### Assembling
 
-By running `lein jlink assemble`, we call out to Leiningen to create an uberjar and then move it into the custom runtime image directory. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
+By running `lein jlink assemble`, we call out to Leiningen to create an uberjar and then move it into the custom runtime image directory and then create scripts to launch your project. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
 
     $ cd image
     $ bin\java -jar my-uberjar.jar
     
 Your application will launch and it will have access to all of the required modules.
+
+### Packaging
+
+Lastly you may package your custom runtime, uberjar and launcher scripts into one archive for distribution.
+
+    $ leink jlink package
+
+The plugin will create a GZIPped TARball of the image by default, if you need a ZIP archive you can set the `:jlink-archive` key to `"zip"`.
 
 ### Create a Docker Image
 
