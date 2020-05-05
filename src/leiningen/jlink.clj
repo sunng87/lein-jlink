@@ -161,8 +161,18 @@
 
 (defn- launcher
   "Adds launcher scripts to the custom runtime image"
-  [project]
-  )
+  [project uberjar-file launcher-path]
+  (let []
+    (spit (str launcher-path ".sh")
+          (format (slurp (io/resource "exec.sh"))
+                  (.getName uberjar-file)))
+    (.setExecutable (File. (str launcher-path ".sh")) true)
+    (spit (str launcher-path ".ps1")
+          (format (slurp (io/resource "exec.ps1"))
+                  (.getName uberjar-file)))
+    (spit (str launcher-path ".bat")
+          (format (slurp (io/resource "exec.bat"))
+                  (.getName uberjar-file)))))
 
 (defn assemble
   "Builds an uberjar for the project and copies into the custom runtime image"
@@ -171,11 +181,14 @@
   (let [jdk-path (jdk-path project)
         jar-bin-path (s/join (File/separator) [jdk-path "bin" "jar"])
         uberjar-file (io/file (uberjar/uberjar project))
-        jlink-path (out project)]
+        jlink-path (out project)
+        launcher-path (str jlink-path (File/separator) (:name project))]
     (io/copy uberjar-file
              (io/file (str jlink-path
                            (File/separator) (.getName uberjar-file))))
-    (l/info "Copied uberjar file into" jlink-path)))
+    (l/info "Copied uberjar file into" jlink-path)
+    (launcher project uberjar-file launcher-path)
+    (l/info "Wrote launcher scripts to" launcher-path)))
 
 (defn- build-archiver
   "Returns an archive for the project that will write to the provided output
