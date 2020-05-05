@@ -1,1 +1,1 @@
-bin\java -jar %s
+bin\java $env:JAVA_TOOLS_OPTIONS -jar %s

@@ -1,1 +1,1 @@
-bin\java -jar %s
+bin\java %%JAVA_TOOLS_OPTIONS%% -jar %s

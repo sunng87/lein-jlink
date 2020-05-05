@@ -186,7 +186,7 @@
     (l/info "Packaged project to" target)))
 
 (defn ^{:help-arglists '[[project sub-command]]
-        :subtasks (list #'init #'clean #'assemble #'package)}
+        :subtasks (list #'init #'clean #'assemble #'package)
   jlink
   "Create Java environment using jlink"
   ([project]

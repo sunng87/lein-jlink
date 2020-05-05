@@ -107,9 +107,14 @@ The plugin's middleware will take care of correctly setting the path to `java` a
 By running `lein jlink assemble`, we call out to Leiningen to create an uberjar and then move it into the custom runtime image directory and then create scripts to launch your project. Once this step is complete, your image will have everything it needs to run your application. You can test it out from the console.
 
     $ cd image
-    $ bin\java -jar my-uberjar.jar
+    $ bin\java -jar my-project-uberjar.jar
     
-Your application will launch and it will have access to all of the required modules.
+Or use the appropriate launcher script.
+
+    $ cd image
+    $ .\my-project.sh
+    
+Your application will launch and it will have access to all of the required modules. If you need to set specific options for the JVM, you may use the [`JAVA_TOOL_OPTIONS`][10] environment variable
 
 ### Packaging
 
@@ -151,3 +156,4 @@ your option) any later version.
 [7]: https://gluonhq.com/products/javafx/
 [8]: https://vividcode.io/package-java-applications-using-jpackage-in-jdk-14/
 [9]: https://github.com/sunng87/alpine-jlink-base
+[10]: https://docs.oracle.com/javase/8/docs/technotes/guides/troubleshoot/envvars002.html
