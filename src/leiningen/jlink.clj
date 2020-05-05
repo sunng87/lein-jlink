@@ -13,7 +13,10 @@
             [clojure.java.io :as io]
             [clojure.string :as s])
   (:import [java.io File]
-           [java.io FilenameFilter]))
+           [java.io FilenameFilter]
+           [org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream]
+           [org.apache.commons.compress.archivers ArchiveStreamFactory]
+           [org.apache.commons.compress.archivers.examples Archiver]))
 
 ;; name of cache configuration file
 (def config-cache ".lein-jlink")
@@ -29,8 +32,8 @@
 (defn out
   "Returns the path to the custom java runtime image"
   [project]
-  (if (:jlink-jre-image-path project)
-    (:jlink-jre-image-path project)
+  (if (:jlink-image-path project)
+    (:jlink-image-path project)
     (str (.getParent (File. (:target-path project))) (File/separator) "image")))
 
 (defn- java-exec
@@ -70,7 +73,7 @@
                          (catch Exception _))
         jlink-image-path (out project)]
     (merge project
-           (if (:jlink-jre-image project)
+           (if (:jlink-image project)
 
              ;; use our custom image's java
              {:java-cmd (java-exec project)}
@@ -95,7 +98,8 @@
         jlink-modules (s/join "," (concat (:jlink-modules project) ["java.base"]))
         cached-modules (try
                          (read-string (slurp config-cache))
-                         (catch Exception _))
+                         (catch Exception
+                             _))
         jlink-path (out project)]
     (when (or (not= jlink-modules cached-modules)
               (not (.exists (io/file jlink-path))))
@@ -117,7 +121,7 @@
 (defn init
   "Creates the custom runtime environment, if required by the project."
   [project]
-  (if (:jlink-jre-image project)
+  (if (:jlink-image project)
     (init-runtime project)))
 
 (defn- module-info
@@ -155,6 +159,11 @@
   (delete-directory (io/file (out project)))
   (clean/clean project))
 
+(defn- launcher
+  "Adds launcher scripts to the custom runtime image"
+  [project]
+  )
+
 (defn assemble
   "Builds an uberjar for the project and copies into the custom runtime image"
   [project]
@@ -168,8 +177,45 @@
                            (File/separator) (.getName uberjar-file))))
     (l/info "Copied uberjar file into" jlink-path)))
 
+(defn- build-archiver
+  "Returns an archive for the project that will write to the provided output
+  stream"
+  [project output-stream]
+  (cond
+    (= (:jlink-archive project) "zip")
+    (.createArchiveOutputStream
+     (ArchiveStreamFactory.)
+     (ArchiveStreamFactory/ZIP)
+     output-stream)
+
+    :else
+    (.createArchiveOutputStream
+     (ArchiveStreamFactory.)
+     (ArchiveStreamFactory/TAR)
+     (GzipCompressorOutputStream. output-stream))))
+
+(defn package
+  "Packages a custom runtime image into an archive"
+  [project]
+  (let [source (out project)
+        target-name (if (:jlink-archive-name project)
+                      (str (:jlink-archive-name project) "-" (:version project))
+                      (str (:name project) "-" (:version project)))
+        target (if (= (:jlink-archive project) "zip")
+                 (str target-name ".zip")
+                 (str target-name ".tar.gz"))
+        out-stream (io/output-stream (io/file target))
+        archiver-stream (build-archiver project out-stream)
+        archiver (Archiver.)]
+    (l/info "Packaging project artifacts from" source)
+    (.create archiver archiver-stream (io/file source))
+    (.close archiver-stream)
+    (.flush out-stream)
+    (.close out-stream)
+    (l/info "Packaged project to" target)))
+
 (defn ^{:help-arglists '[[project sub-command]]
-        :subtasks (list #'init #'clean #'assemble)}
+        :subtasks (list #'init #'clean #'assemble #'package)}
   jlink
   "Create Java environment using jlink"
   ([project]
@@ -179,4 +225,5 @@
      (= sub "init") (init project)
      (= sub "clean") (clean project)
      (= sub "assemble") (assemble project)
+     (= sub "package") (package project)
      :else (print-help))))
