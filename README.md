@@ -24,43 +24,43 @@ This plugin assumes that you have set a valid `JAVA_HOME` environment variable a
 
 Next, add this plugin to your `project.clj` file in the `:plugins` section.
 
-    [lein-jlink "0.2.1"]
-    
+    [lein-jlink "0.3.0"]
+
 Then add the middleware into the `:middleware` section.
 
     [leiningen.jlink/middleware]
-    
+
 Your project should look something like this...
 
     {defproject myorganization/myproject
       ...
       :plugins    [...
-                    [lein-jlink "0.2.1"]]
+                    [lein-jlink "0.3.0"]]
       :middleware [...
                     [leiningen.jlink/middleware]]
       ...
     }
-    
+
 The middleware will alter the way Leiningen calls out to `java` and `javac` such that it calls out to the correct ones and that these calls include references to the modules that your project needs. By default only the `java.base` module is included, if you need other modules you can simply add them to the `:jlink-modules` key of your `project.clj` file.
 
     :jlink-modules ["java.sql"]
-    
+
 There are many modules distributed with the JDK, you can ask `java` to list them all.
 
     $ java --list-modules
-    
+
 If you only use modules packaged with your JDK, then you can use all of the regular Leiningen commands without issue. When you compile a build a JAR file with `lein build` or execute it with `lein run`, the middleware will make sure that the modules are on the path.
-    
+
 ### External Modules
 
 If you are using modules that are not distributed with the JDK, you can download and add them to your project with the `:jlink-modules-paths` keyword in your `project.clj`. For instance, if you downloaded the [JavaFX modules][6] from [Gluon's website][7] (referred to as "jmods"), you would unpack them somewhere on your machine and then add a reference to them like so...
 
     :jlink-module-paths ["/opt/java/javafx-jmods-14.0.1"]
-    
+
 If you are running on Windows, you will want to escape the `\` character in your paths with `\\`. For example:
 
     :jlink-module-paths ["C:\\Program Files\\Java\\javafx-jmods-14.0.1"]
-    
+
 External modules _only_ work at compile time, they cannot be passed to your default `java` command at runtime. There are two solutions:
 
 + You could download and install the SDK for the module. This plugin supports this but not all modules provide an SDK.
@@ -71,9 +71,9 @@ External modules _only_ work at compile time, they cannot be passed to your defa
 If you happen to have the SDK for a module installed and you don't want to build a custom runtime image, you can add the path to the SDK to your `project.clj` file on with the `:jlink-sdk-paths` key. For example...
 
     :jlink-sdk-paths ["C:\\Program Files\\Java\\javafx-sdk-14\\lib"]
-    
+
 That being said, building a custom image might be easier since you don't need to install anything except the modules.
-    
+
 ### Buidling a Custom Runtime Environment
 
 The plugin will build up a custom runtime environment (Java runtime) for your project, including _only_ the modules your project uses. If you have external modules but lack access to an SDK, you will _need_ to create a custom runtime in order to actually run your project.
@@ -91,7 +91,7 @@ With your custom runtime created, you can now build and run your project with th
 If you aren't using any external modules then you can continue to use Leiningen's regular `clean` task. If you are using a image, you will have to ask the plugin to perform its clean task.
 
     $ lein jlink clean
-    
+
 The plugin will remove the image directory and then call out to Leiningen to perform it's regular clean task.
 
 ### Running
@@ -108,12 +108,12 @@ By running `lein jlink assemble`, we call out to Leiningen to create an uberjar 
 
     $ cd image
     $ bin\java -jar my-project-uberjar.jar
-    
+
 Or use the appropriate launcher script.
 
     $ cd image
     $ .\my-project.sh
-    
+
 Your application will launch and it will have access to all of the required modules. If you need to set specific options for the JVM, you may use the [`JAVA_TOOL_OPTIONS`][10] environment variable
 
 ### Packaging
