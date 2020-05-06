@@ -1,3 +1,2 @@
 #!/bin/sh
-DIR=`dirname $0`
-$DIR/java $JLINK_VM_OPTIONS -jar $DIR/../%s.jar $@
+bin/java $JAVA_TOOLS_OPTIONS -jar %s
