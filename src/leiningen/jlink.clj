@@ -99,7 +99,7 @@
       (delete-directory (io/file jlink-path))
       (eval/sh "jlink"
                "--module-path"
-               (str "\"" jlink-modules-path "\"")
+               jlink-modules-path
                "--add-modules"
                jlink-modules
                "--output"
