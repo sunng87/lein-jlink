@@ -120,7 +120,7 @@ Your application will launch and it will have access to all of the required modu
 
 Lastly you may package your custom runtime, uberjar and launcher scripts into one archive for distribution.
 
-    $ leink jlink package
+    $ lein jlink package
 
 The plugin will create a GZIPped TARball of the image by default, if you need a ZIP archive you can set the `:jlink-archive` key to `"zip"`.
 
